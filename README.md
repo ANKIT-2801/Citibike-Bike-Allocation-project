@@ -47,7 +47,7 @@ To run the analysis, ensure you have the following software and packages install
 - **R** (version 4.0.0 or higher)
 - **RStudio** (optional, but recommended for running R Markdown files)
 - Required R packages: `dplyr`, `ggplot2`, `class`, `ROSE`
-
+- **MS Excel**: To use solver function to create an optimization model and predict the correct number of bikes 
 ### Installing Required Packages
 
 To install the required packages, run the following commands in your R console:
