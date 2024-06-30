@@ -1,0 +1,337 @@
+---
+title: "Citi Bike - group 2"
+output: html_document
+date: "2023-10-04"
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+Importing library and data set
+```{r}
+library("dplyr")
+library('ggplot2')
+library('class') # to run KNN
+library('ROSE') # to generate ROC
+
+
+```
+
+# Importing Data set
+
+```{r}
+
+citibikedf<- read.csv("E:/mgt585/data/citibikeDemand.csv")
+
+```
+
+# Data exploration
+
+```{r}
+
+dim(citibikedf)
+str(citibikedf)
+colnames(citibikedf)
+head(citibikedf)
+tail(citibikedf)
+
+# To find out the total number of Na values in the data set
+sum(is.na(citibikedf))
+
+# To find out the total number of Na values in the data set for each column 
+colSums(is.na(citibikedf))
+
+# replacing NA's with the mean of the variables
+citibikedf$Temperature[is.na(citibikedf$Temperature)] <- mean(citibikedf$Temperature, na.rm = TRUE)
+citibikedf$EndPerCapitaIncome[is.na(citibikedf$EndPerCapitaIncome)] <- mean(citibikedf$EndPerCapitaIncome, na.rm = TRUE)
+citibikedf$StartPerCapitaIncome[is.na(citibikedf$StartPerCapitaIncome)] <- mean(citibikedf$StartPerCapitaIncome, na.rm = TRUE)
+
+```
+
+
+### Converting variables 
+
+Converting characters into factor and converting date format.
+
+```{r}
+# Convert character variables in factor 
+citibikedf$DemandTime <- as.factor(citibikedf$DemandTime)
+citibikedf$DayOfWeek <- as.factor(citibikedf$DayOfWeek)
+citibikedf$StartStationName <- as.factor(citibikedf$StartStationName)
+citibikedf$StartNeighborhood <- as.factor(citibikedf$StartNeighborhood)
+citibikedf$EndStationName <- as.factor(citibikedf$EndStationName)
+citibikedf$EndNeighborhood <- as.factor(citibikedf$EndNeighborhood)
+citibikedf$Month <- as.factor(citibikedf$Month)
+citibikedf$StartStationId <- as.factor(citibikedf$StartStationId)
+citibikedf$EndStationId <- as.factor(citibikedf$EndStationId)
+
+# Converting demand date in R format.
+citibikedf$DemandDate <- as.Date(citibikedf$DemandDate,"%m/%d/%y")
+
+# To check thaat everything got converted successfully
+str(citibikedf)
+```
+
+
+
+## Descriptive Statistics
+
+```{r}
+# Univariate Statistics
+
+summary(citibikedf$Demand)
+sd(citibikedf$Demand)
+summary(citibikedf$Temperature)
+sd(citibikedf$Temperature)
+summary(citibikedf$DailySnowFall)
+sd(citibikedf$DailySnowFall)
+summary(citibikedf$DailyPrecipitation)
+sd(citibikedf$DailyPrecipitation)
+summary(citibikedf$Customer_prop)
+sd(citibikedf$Customer_prop)
+summary(citibikedf$StartPerCapitaIncome)
+sd(citibikedf$StartPerCapitaIncome)
+summary(citibikedf$StartPctHouseholdsNoVehicle)
+sd(citibikedf$StartPctHouseholdsNoVehicle)
+summary(citibikedf$EndPerCapitaIncome)
+sd(citibikedf$EndPerCapitaIncome)
+summary(citibikedf$EndPctHouseholdsNoVehicle)
+sd(citibikedf$EndPctHouseholdsNoVehicle)
+summary(citibikedf$DistanceMiles)
+sd(citibikedf$DistanceMiles)
+
+# Bivariate Statistics
+
+#Correlation between demand and other variables
+citibikedf %>%
+  summarise(cor_temp=cor(Demand,Temperature),
+            cor_miles=cor(Demand,DistanceMiles),
+            cor_income=cor(Demand,StartPerCapitaIncome),
+            cor_endincome=cor(Demand,EndPerCapitaIncome),
+            cor_duration=cor(Demand,TripDurationMinutes))
+
+```
+
+### Plotting Scatter plot
+# Use ggplot() to plot a scatter plot for demand and other variables
+
+```{r}
+# Demand and Temperature
+ggplot(citibikedf, mapping = aes(x = Temperature, y = Demand)) + 
+  geom_point() + 
+  geom_smooth(method = "lm",se = FALSE, colour = "blue") + 
+  ggtitle("Impact of Temperature on Demand") 
+# The linearity slope is not going up or down, so we won't consider temperature.
+
+# Demand and TripDurationMinutes
+ggplot(citibikedf, mapping = aes(x = TripDurationMinutes, y = Demand)) + 
+  geom_point() + 
+  geom_smooth(method = "lm",se = FALSE, colour = "blue") + 
+  ggtitle("Impact of TripDurationMinutes on Demand") 
+# The linearity slope is not going up or down, so we won't consider temperature.
+
+# Demand and Customer_prop
+ggplot(citibikedf, mapping = aes(x = Customer_prop, y = Demand)) + 
+  geom_point() + 
+  geom_smooth(method = "lm",se = FALSE, colour = "blue") + 
+  ggtitle("Impact of Customer_prop on Demand") 
+# The linearity slope is not going up or down, so we won't consider Customer_prop
+
+# Demand and StartPerCapitaIncome
+ggplot(citibikedf, mapping = aes(x = StartPerCapitaIncome, y = Demand)) + 
+  geom_point() + 
+  geom_smooth(method = "lm",se = FALSE, colour = "blue") + 
+  ggtitle("Impact of StartPerCapitaIncome on Demand") 
+# The linearity slope is going up but not that much its around less than 60%, still we will consider StartPerCapitaIncome for our model
+ 
+# Demand and EndPerCapitaIncome
+ggplot(citibikedf, mapping = aes(x = EndPerCapitaIncome, y = Demand)) + 
+  geom_point() + 
+  geom_smooth(method = "lm",se = FALSE, colour = "blue") + 
+  ggtitle("Impact of EndPerCapitaIncome on Demand") 
+# The linearity slope is going up but not that much its around less than 60%, still we will consider EndPerCapitaIncome for our model
+
+# Demand and StartPctHouseholdsNoVehicle
+ggplot(citibikedf, mapping = aes(x = StartPctHouseholdsNoVehicle, y = Demand)) + 
+  geom_point() + 
+  geom_smooth(method = "lm",se = FALSE, colour = "blue") + 
+  ggtitle("Impact of StartPctHouseholdsNoVehicle on Demand") 
+# The linearity slope is going up but not that much its around less than 75%, still we will consider StartPctHouseholdsNoVehicle for our model
+
+# Demand and EndPctHouseholdsNoVehicle
+ggplot(citibikedf, mapping = aes(x = EndPctHouseholdsNoVehicle, y = Demand)) + 
+  geom_point() + 
+  geom_smooth(method = "lm",se = FALSE, colour = "blue") + 
+  ggtitle("Impact of EndPctHouseholdsNoVehicle on Demand") 
+# The linearity slope is going up but not that much its around less than 75%, still we will consider EndPctHouseholdsNoVehicle for our model
+
+# Demand and TripDurationMinutes
+ggplot(citibikedf, mapping = aes(x = TripDurationMinutes, y = Demand)) + 
+  geom_point() + 
+  geom_smooth(method = "lm",se = FALSE, colour = "blue") + 
+  ggtitle("Impact of TripDurationMinutes on Demand") 
+# The linearity slope is not going up or down, so we won't consider TripDurationMinutes
+
+# Demand and DistanceMiles 
+ggplot(citibikedf, mapping = aes(x = DistanceMiles, y = Demand)) + 
+  geom_point() + 
+  geom_smooth(method = "lm",se = FALSE, colour = "blue") + 
+  ggtitle("Impact of DistanceMiles on Demand") 
+# The linearity slope is not going up or down, so we won't consider DistanceMiles
+
+```
+
+
+## Predictive Analytics
+
+### Multiple Linear Regression
+
+# Model 1
+
+```{r}
+lm1 <- lm(Demand~DemandTime+Temperature+Customer_prop+DayOfWeek+Month+StartPerCapitaIncome+StartPctHouseholdsNoVehicle+EndPerCapitaIncome+EndPctHouseholdsNoVehicle+TripDurationMinutes+DistanceMiles+StartNeighborhood+EndNeighborhood+StartStationId+EndStationId, data = citibikedf)
+
+
+summary(lm1)
+```
+.
+.
+.
+.
+These are some variables DemandTime_evening , Month , TripDurationMinutes, DistanceMiles , StartStationId, EndStationId, which we find significant for our analysis. Still need to create a better model
+.
+.
+.
+.
+# Model 2
+
+Regression model using variables which we find significant in the model above as well as variables we find significant while plotting scatter plot
+
+```{r}
+
+lm2 <- lm(Demand~DemandTime+Month+TripDurationMinutes+DistanceMiles+StartPerCapitaIncome+StartPctHouseholdsNoVehicle+EndPerCapitaIncome+EndPctHouseholdsNoVehicle+StartStationId+EndStationId, data = citibikedf)
+
+summary(lm2)
+
+```
+.
+.
+.
+Output - Some variables are still not significant.
+.
+.
+.
+
+# Model 3
+
+```{r}
+lm3 <-lm(Demand~DemandTime+TripDurationMinutes+DistanceMiles+StartStationId+EndStationId, data = citibikedf)
+
+summary(lm3)
+```
+.
+.
+.
+Finally a good model which is having all the variable significant.
+.
+.
+.
+## Predicting the demand for 5 selective stations using predit() function.
+The 5 stations we have selected are:
+ 519
+ 435
+ 285
+ 509
+ 402
+
+# Prediction for Daytime
+
+```{r}
+# For 519
+predict(lm3, data.frame(DemandTime = "daytime",DistanceMiles = 0,TripDurationMinutes = 13.4, StartStationId = "519", EndStationId = "519" ))
+predict(lm3, data.frame(DemandTime = "daytime",DistanceMiles = 1.111147,TripDurationMinutes = 11.27333, StartStationId = "519", EndStationId = "435" ))
+predict(lm3, data.frame(DemandTime = "daytime",DistanceMiles = 1.377811362,TripDurationMinutes = 14.31388889, StartStationId = "519", EndStationId = "285" ))
+predict(lm3, data.frame(DemandTime = "daytime",DistanceMiles = 1.347524645,TripDurationMinutes = 15.8, StartStationId = "519", EndStationId = "509" ))
+predict(lm3, data.frame(DemandTime = "daytime",DistanceMiles = 1.009855,TripDurationMinutes = 10.66667, StartStationId = "519", EndStationId = "402" ))
+
+# For 435
+predict(lm3, data.frame(DemandTime = "daytime",DistanceMiles = 1.1111,TripDurationMinutes = 12.1666, StartStationId = "435", EndStationId = "519" ))
+predict(lm3, data.frame(DemandTime = "daytime",DistanceMiles = 0,TripDurationMinutes = 1.1166, StartStationId = "435", EndStationId = "435" ))
+predict(lm3, data.frame(DemandTime = "daytime",DistanceMiles = 0.527871118,TripDurationMinutes = 24.3, StartStationId = "435", EndStationId = "285" ))
+predict(lm3, data.frame(DemandTime = "daytime",DistanceMiles = 0.48536647,TripDurationMinutes = 4.038095238, StartStationId = "435", EndStationId = "509" ))
+predict(lm3, data.frame(DemandTime = "daytime",DistanceMiles = 0.2602,TripDurationMinutes = 3.1722, StartStationId = "435", EndStationId = "402" ))
+
+# For 285
+predict(lm3, data.frame(DemandTime = "daytime",DistanceMiles = 1.377811362,TripDurationMinutes = 10.19166667, StartStationId = "285", EndStationId = "519" ))
+predict(lm3, data.frame(DemandTime = "daytime",DistanceMiles = 0.527871118,TripDurationMinutes = 8.016666667, StartStationId = "285", EndStationId = "435" ))
+predict(lm3, data.frame(DemandTime = "daytime",DistanceMiles = 0,TripDurationMinutes = 10.4, StartStationId = "285", EndStationId = "285" ))
+predict(lm3, data.frame(DemandTime = "daytime",DistanceMiles = 0.958565064,TripDurationMinutes = 9.433333333, StartStationId = "285", EndStationId = "509" ))
+predict(lm3, data.frame(DemandTime = "daytime",DistanceMiles = 0.404980003,TripDurationMinutes = 4.35, StartStationId = "285", EndStationId = "402" ))
+
+# For 509
+predict(lm3, data.frame(DemandTime = "daytime",DistanceMiles = 1.347524645,TripDurationMinutes = 44.16666667, StartStationId = "509", EndStationId = "519" ))
+predict(lm3, data.frame(DemandTime = "daytime",DistanceMiles = 0.48536647,TripDurationMinutes = 4.997619048, StartStationId = "509", EndStationId = "435" ))
+predict(lm3, data.frame(DemandTime = "daytime",DistanceMiles = 0.958565064,TripDurationMinutes = 9.433333333, StartStationId = "509", EndStationId = "285" ))
+predict(lm3, data.frame(DemandTime = "daytime",DistanceMiles = 0,TripDurationMinutes = 1.016666667, StartStationId = "509", EndStationId = "509" ))
+predict(lm3, data.frame(DemandTime = "daytime",DistanceMiles = 0.742707755,TripDurationMinutes = 7.166666667, StartStationId = "509", EndStationId = "402" ))
+
+# For 402
+predict(lm3, data.frame(DemandTime = "daytime",DistanceMiles = 1.009855342,TripDurationMinutes = 11.08148148, StartStationId = "402", EndStationId = "519" ))
+predict(lm3, data.frame(DemandTime = "daytime",DistanceMiles = 0.260216942,TripDurationMinutes = 2.85, StartStationId = "402", EndStationId = "435" ))
+predict(lm3, data.frame(DemandTime = "daytime",DistanceMiles = 0.404980003,TripDurationMinutes = 6.195833333, StartStationId = "402", EndStationId = "285" ))
+predict(lm3, data.frame(DemandTime = "daytime",DistanceMiles = 0.742707755,TripDurationMinutes = 5.57, StartStationId = "402", EndStationId = "509" ))
+predict(lm3, data.frame(DemandTime = "daytime",DistanceMiles = 0,TripDurationMinutes = 8.176666667, StartStationId = "402", EndStationId = "402" ))
+
+```
+
+# Prediction for Evening
+
+```{r}
+# For 519
+predict(lm3, data.frame(DemandTime = "evening",DistanceMiles = 0,TripDurationMinutes = 13.4, StartStationId = "519", EndStationId = "519" ))
+predict(lm3, data.frame(DemandTime = "evening",DistanceMiles = 1.111147,TripDurationMinutes = 11.27333, StartStationId = "519", EndStationId = "435" ))
+predict(lm3, data.frame(DemandTime = "evening",DistanceMiles = 1.377811362,TripDurationMinutes = 14.31388889, StartStationId = "519", EndStationId = "285" ))
+predict(lm3, data.frame(DemandTime = "evening",DistanceMiles = 1.347524645,TripDurationMinutes = 15.8, StartStationId = "519", EndStationId = "509" ))
+predict(lm3, data.frame(DemandTime = "evening",DistanceMiles = 1.009855,TripDurationMinutes = 10.66667, StartStationId = "519", EndStationId = "402" ))
+
+# For 435
+predict(lm3, data.frame(DemandTime = "evening",DistanceMiles = 1.1111,TripDurationMinutes = 12.1666, StartStationId = "435", EndStationId = "519" ))
+predict(lm3, data.frame(DemandTime = "evening",DistanceMiles = 0,TripDurationMinutes = 1.1166, StartStationId = "435", EndStationId = "435" ))
+predict(lm3, data.frame(DemandTime = "evening",DistanceMiles = 0.527871118,TripDurationMinutes = 24.3, StartStationId = "435", EndStationId = "285" ))
+predict(lm3, data.frame(DemandTime = "evening",DistanceMiles = 0.48536647,TripDurationMinutes = 4.038095238, StartStationId = "435", EndStationId = "509" ))
+predict(lm3, data.frame(DemandTime = "evening",DistanceMiles = 0.2602,TripDurationMinutes = 3.1722, StartStationId = "435", EndStationId = "402" ))
+
+# For 285
+predict(lm3, data.frame(DemandTime = "evening",DistanceMiles = 1.377811362,TripDurationMinutes = 10.19166667, StartStationId = "285", EndStationId = "519" ))
+predict(lm3, data.frame(DemandTime = "evening",DistanceMiles = 0.527871118,TripDurationMinutes = 8.016666667, StartStationId = "285", EndStationId = "435" ))
+predict(lm3, data.frame(DemandTime = "evening",DistanceMiles = 0,TripDurationMinutes = 10.4, StartStationId = "285", EndStationId = "285" ))
+predict(lm3, data.frame(DemandTime = "evening",DistanceMiles = 0.958565064,TripDurationMinutes = 9.433333333, StartStationId = "285", EndStationId = "509" ))
+predict(lm3, data.frame(DemandTime = "evening",DistanceMiles = 0.404980003,TripDurationMinutes = 4.35, StartStationId = "285", EndStationId = "402" ))
+
+# For 509
+predict(lm3, data.frame(DemandTime = "evening",DistanceMiles = 1.347524645,TripDurationMinutes = 44.16666667, StartStationId = "509", EndStationId = "519" ))
+predict(lm3, data.frame(DemandTime = "evening",DistanceMiles = 0.48536647,TripDurationMinutes = 4.997619048, StartStationId = "509", EndStationId = "435" ))
+predict(lm3, data.frame(DemandTime = "evening",DistanceMiles = 0.958565064,TripDurationMinutes = 9.433333333, StartStationId = "509", EndStationId = "285" ))
+predict(lm3, data.frame(DemandTime = "evening",DistanceMiles = 0,TripDurationMinutes = 1.016666667, StartStationId = "509", EndStationId = "509" ))
+predict(lm3, data.frame(DemandTime = "evening",DistanceMiles = 0.742707755,TripDurationMinutes = 7.166666667, StartStationId = "509", EndStationId = "402" ))
+
+# For 402
+predict(lm3, data.frame(DemandTime = "evening",DistanceMiles = 1.009855342,TripDurationMinutes = 11.08148148, StartStationId = "402", EndStationId = "519" ))
+predict(lm3, data.frame(DemandTime = "evening",DistanceMiles = 0.260216942,TripDurationMinutes = 2.85, StartStationId = "402", EndStationId = "435" ))
+predict(lm3, data.frame(DemandTime = "evening",DistanceMiles = 0.404980003,TripDurationMinutes = 6.195833333, StartStationId = "402", EndStationId = "285" ))
+predict(lm3, data.frame(DemandTime = "evening",DistanceMiles = 0.742707755,TripDurationMinutes = 5.57, StartStationId = "402", EndStationId = "509" ))
+predict(lm3, data.frame(DemandTime = "evening",DistanceMiles = 0,TripDurationMinutes = 8.176666667, StartStationId = "402", EndStationId = "402" ))
+
+```
+
+
+
