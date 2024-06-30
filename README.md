@@ -40,22 +40,21 @@ To find the number of bikes to stock in each station at the beginning of the day
 4. **Report**
    - Prepare a presentation summarizing the findings and recommendations.
 
-## R Scripts and Analysis
+### Prerequisites
 
-### 1. Data Preparation
-- Load and clean the dataset.
-- Compute summary statistics.
-- Handle missing data and outliers.
+To run the analysis, ensure you have the following software and packages installed:
 
-### 2. Descriptive Analysis
-- Compute univariate statistics (e.g., mean, standard deviation).
-- Compute bivariate statistics (e.g., correlation).
-- Visualize the data using `ggplot2`.
+- **R** (version 4.0.0 or higher)
+- **RStudio** (optional, but recommended for running R Markdown files)
+- Required R packages: `dplyr`, `ggplot2`, `class`, `ROSE`
 
-### 3. Predictive Analysis
-- Develop a linear regression model to forecast daytime and evening demand for selected stations.
-- Collect data for future dates and predict demand.
+### Installing Required Packages
 
-### 4. Prescriptive Analysis
-- Use optimization techniques to determine the initial allocation of bikes to maximize trips.
+To install the required packages, run the following commands in your R console:
+
+```r
+install.packages("dplyr")
+install.packages("ggplot2")
+install.packages("class")
+install.packages("ROSE")
 
